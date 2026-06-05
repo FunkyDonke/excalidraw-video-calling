@@ -147,6 +147,7 @@ import "./index.scss";
 
 import { ExcalidrawPlusPromoBanner } from "./components/ExcalidrawPlusPromoBanner";
 import { AppSidebar } from "./components/AppSidebar";
+import { VideoCallGallery } from "./components/VideoCallGallery";
 
 import type { CollabAPI } from "./collab/Collab";
 
@@ -1261,6 +1262,7 @@ const ExcalidrawWrapper = () => {
             ref={debugCanvasRef}
           />
         )}
+        <VideoCallGallery />
       </Excalidraw>
     </div>
   );

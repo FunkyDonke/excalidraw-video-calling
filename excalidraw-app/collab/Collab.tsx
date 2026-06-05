@@ -87,6 +87,8 @@ import {
 } from "../data/localStorage";
 import { resetBrowserStateVersions } from "../data/tabSync";
 
+import { webRTCManager } from "./WebRTCManager";
+
 import { collabErrorIndicatorAtom } from "./CollabError";
 import Portal from "./Portal";
 
@@ -403,6 +405,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
   };
 
   private destroySocketClient = (opts?: { isUnload: boolean }) => {
+    webRTCManager.destroy();
     this.lastBroadcastedOrReceivedSceneVersion = -1;
     this.portal.close();
     this.fileManager.reset();
@@ -529,6 +532,12 @@ class Collab extends PureComponent<CollabProps, CollabState> {
       );
 
       this.portal.socket.once("connect_error", fallbackInitializationHandler);
+      
+      this.portal.socket.on("connect", () => {
+        if (this.portal.socket?.id) {
+          webRTCManager.init(roomId, this.portal.socket.id);
+        }
+      });
     } catch (error: any) {
       console.error(error);
       this.setErrorDialog(error.message);
@@ -867,6 +876,13 @@ class Collab extends PureComponent<CollabProps, CollabState> {
   };
 
   setCollaborators(sockets: SocketId[]) {
+    const newSockets = new Set(sockets);
+    for (const [socketId] of this.collaborators) {
+      if (!newSockets.has(socketId)) {
+        webRTCManager.disconnectFromPeer(socketId);
+      }
+    }
+
     const collaborators: InstanceType<typeof Collab>["collaborators"] =
       new Map();
     for (const socketId of sockets) {
@@ -876,6 +892,9 @@ class Collab extends PureComponent<CollabProps, CollabState> {
           isCurrentUser: socketId === this.portal.socket?.id,
         }),
       );
+      if (socketId !== this.portal.socket?.id) {
+        webRTCManager.connectToPeer(socketId);
+      }
     }
     this.collaborators = collaborators;
     this.excalidrawAPI.updateScene({ collaborators });
@@ -897,6 +916,10 @@ class Collab extends PureComponent<CollabProps, CollabState> {
     this.excalidrawAPI.updateScene({
       collaborators,
     });
+
+    if (socketId !== this.portal.socket?.id) {
+      webRTCManager.connectToPeer(socketId);
+    }
   };
 
   public setLastBroadcastedOrReceivedSceneVersion = (version: number) => {
