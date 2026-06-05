@@ -508,9 +508,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
     this.setIsCollaborating(true);
     LocalData.pauseSave("collaboration");
 
-    const { default: socketIOClient } = await import(
-      /* webpackChunkName: "socketIoClient" */ "socket.io-client"
-    );
+    const { PeerJSSocket } = await import("./PeerJSSocket");
 
     const fallbackInitializationHandler = () => {
       this.initializeRoom({
@@ -523,10 +521,11 @@ class Collab extends PureComponent<CollabProps, CollabState> {
     this.fallbackInitializationHandler = fallbackInitializationHandler;
 
     try {
+      const isHost = !existingRoomLinkData;
+      const socket = new PeerJSSocket(roomId, isHost) as any;
+      
       this.portal.socket = this.portal.open(
-        socketIOClient(import.meta.env.VITE_APP_WS_SERVER_URL, {
-          transports: ["websocket", "polling"],
-        }),
+        socket,
         roomId,
         roomKey,
       );
