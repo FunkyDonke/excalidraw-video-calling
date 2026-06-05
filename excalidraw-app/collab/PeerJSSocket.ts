@@ -86,9 +86,17 @@ export class PeerJSSocket {
             }
           });
           // Also process locally
-          this.emitLocal(data.event, data.payload);
+          if (data.event === "client-broadcast" && Array.isArray(data.payload)) {
+            this.emitLocal(data.event, ...data.payload);
+          } else {
+            this.emitLocal(data.event, data.payload);
+          }
         } else {
-          this.emitLocal(data.event, data.payload);
+          if (data.event === "client-broadcast" && Array.isArray(data.payload)) {
+            this.emitLocal(data.event, ...data.payload);
+          } else {
+            this.emitLocal(data.event, data.payload);
+          }
         }
       }
     });
@@ -130,8 +138,13 @@ export class PeerJSSocket {
       return;
     }
 
-    if (event === "client-broadcast") {
-      const payload = args[0];
+    if (event === "server-broadcast" || event === "server-volatile-broadcast") {
+      // Excalidraw emits: emit(event, roomId, encryptedBuffer, iv)
+      const roomId = args[0];
+      const encryptedBuffer = args[1];
+      const iv = args[2];
+      
+      const payload = [encryptedBuffer, iv];
       const data = { event: "client-broadcast", payload };
       
       if (this.isHost) {

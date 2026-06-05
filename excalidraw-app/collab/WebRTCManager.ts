@@ -99,7 +99,7 @@ class WebRTCManager {
       this.isAudioEnabled = audio;
       
       // Send stream to existing connections
-      this.replaceStreamInConnections(this.localStream);
+      this.replaceStreamInConnections();
       
       // Fire local stream added event
       this.updateStreams(prev => {
@@ -127,7 +127,7 @@ class WebRTCManager {
           this.toggleScreenShare(false);
         };
         
-        this.replaceStreamInConnections(this.screenStream);
+        this.replaceStreamInConnections();
         this.updateStreams(prev => {
           const filtered = prev.filter(s => s.peerId !== 'local-screen');
           return [...filtered, { peerId: 'local-screen', stream: this.screenStream! }];
@@ -143,57 +143,60 @@ class WebRTCManager {
       this.isScreenSharing = false;
       this.updateStreams(prev => prev.filter(s => s.peerId !== 'local-screen'));
       // Revert back to local camera stream if enabled
-      if (this.localStream) {
-        this.replaceStreamInConnections(this.localStream);
-      }
+      this.replaceStreamInConnections();
     }
   }
 
-  private replaceStreamInConnections(stream: MediaStream) {
-    this.connections.forEach(call => {
-      // PeerJS doesn't easily support replacing tracks dynamically without renegotiation in older versions,
-      // but if the call is active, we can try to replace the sender's track.
-      // Alternatively, we just re-call them.
-      call.peerConnection?.getSenders().forEach(sender => {
-        if (sender.track?.kind === 'video') {
-          sender.replaceTrack(stream.getVideoTracks()[0]);
-        }
-        if (sender.track?.kind === 'audio') {
-          sender.replaceTrack(stream.getAudioTracks()[0]);
-        }
-      });
+  private replaceStreamInConnections() {
+    // WebRTC replaceTrack silently fails if transceivers weren't originally negotiated.
+    // The most robust way to add/change video in PeerJS is to re-call the peers with the new stream.
+    const peerIds = Array.from(this.connections.keys());
+    peerIds.forEach(peerId => {
+      // Close the old call
+      const oldCall = this.connections.get(peerId);
+      if (oldCall) oldCall.close();
+      this.connections.delete(peerId);
+      
+      // Remove old streams from this peer
+      this.updateStreams(prev => prev.filter(s => s.peerId !== peerId));
+
+      // Re-call with the new stream
+      const streamToSend = this.isScreenSharing ? this.screenStream : this.localStream;
+      const call = this.peer!.call(peerId, streamToSend || new MediaStream());
+      this.setupCall(call);
     });
   }
 
-  public connectToPeer(socketId: string) {
-    if (!this.peer || !this.currentRoomId) return;
-    const peerId = this.generatePeerId(socketId);
+  private setupCall(call: MediaConnection) {
+    this.connections.set(call.peer, call);
     
-    if (this.connections.has(peerId) || peerId === this.peer.id) return;
-
-    // Only call if we have a stream, or call empty just to connect (PeerJS allows data only but we are doing media)
-    const call = this.peer.call(peerId, this.screenStream || this.localStream || new MediaStream());
-    
-    if (!call) return; // Happens if peer is destroyed
-
-    this.connections.set(peerId, call);
-
     call.on('stream', (remoteStream) => {
       this.updateStreams(prev => {
-        if (prev.find(s => s.peerId === peerId)) return prev;
-        return [...prev, { peerId, stream: remoteStream }];
+        if (prev.find(s => s.peerId === call.peer)) return prev;
+        return [...prev, { peerId: call.peer, stream: remoteStream }];
       });
     });
 
     call.on('close', () => {
-      this.updateStreams(prev => prev.filter(s => s.peerId !== peerId));
-      this.connections.delete(peerId);
+      this.updateStreams(prev => prev.filter(s => s.peerId !== call.peer));
+      this.connections.delete(call.peer);
     });
-    
+
     call.on('error', (err) => {
       console.error("Call error", err);
-      this.connections.delete(peerId);
+      this.connections.delete(call.peer);
     });
+  }
+
+  public connectToPeer(socketId: string) {
+    if (!this.peer) return;
+    const peerId = this.generatePeerId(socketId);
+    if (this.connections.has(peerId)) return;
+
+    const streamToSend = this.isScreenSharing ? this.screenStream : this.localStream;
+    const call = this.peer.call(peerId, streamToSend || new MediaStream());
+    
+    this.setupCall(call);
   }
 
   public disconnectFromPeer(socketId: string) {
