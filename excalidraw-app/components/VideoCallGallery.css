@@ -1,60 +1,154 @@
 .webrtc-gallery-wrapper {
-  position: absolute;
-  top: 60px;
-  right: 20px;
-  width: 250px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  min-width: 200px;
+  background: white;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  z-index: 1000;
+  gap: 0;
+  z-index: 9999;
   pointer-events: auto;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  border: 1px solid #ddd;
+  overflow: hidden;
+  resize: both;
+  transition: opacity 0.2s;
+}
+
+.webrtc-gallery-wrapper.dragging {
+  opacity: 0.8;
+  cursor: grabbing;
+}
+
+.webrtc-gallery-wrapper.minimized {
+  width: auto !important;
+  height: auto !important;
+  resize: none;
+}
+
+.webrtc-gallery-wrapper.minimized .webrtc-controls {
+  display: none;
+}
+
+.gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f0f0f0;
+  border-bottom: 1px solid #ddd;
+  cursor: grab;
+  user-select: none;
+}
+
+.webrtc-gallery-wrapper.dragging .gallery-header {
+  cursor: grabbing;
+}
+
+.drag-handle {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+  flex-grow: 1;
+}
+
+.minimize-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 4px;
+  color: #666;
+}
+
+.minimize-btn:hover {
+  color: #000;
 }
 
 .webrtc-videos {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: 70vh;
+  padding: 10px;
+  flex-grow: 1;
   overflow-y: auto;
+  background: #f9f9f9;
 }
 
 .video-container {
+  position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
   background-color: #222;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  display: flex;
 }
 
 .video-container video {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
+  max-height: 400px;
+  object-fit: contain;
 }
 
 .video-container video.mirrored {
   transform: scaleX(-1);
 }
 
+.video-fullscreen-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-container:hover .video-fullscreen-btn {
+  opacity: 1;
+}
+
+.video-fullscreen-btn:hover {
+  background: rgba(0,0,0,0.8);
+}
+
 .webrtc-controls {
   display: flex;
   gap: 5px;
+  padding: 10px;
   background: white;
-  padding: 8px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  justify-content: space-between;
+  border-top: 1px solid #ddd;
 }
 
 .webrtc-controls button {
   background: #e0e0e0;
   border: none;
-  padding: 6px 10px;
+  padding: 8px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
+  font-weight: 500;
   flex: 1;
+  transition: background 0.2s;
+}
+
+.webrtc-controls button:hover {
+  background: #d0d0d0;
 }
 
 .webrtc-controls button.active {
@@ -62,14 +156,50 @@
   color: white;
 }
 
+.webrtc-controls button.active:hover {
+  background: #b71c1c;
+}
+
+/* Hide videos container when empty but controls are still visible */
+.webrtc-gallery-wrapper.no-videos .webrtc-videos {
+  display: none;
+}
+
 /* Dark mode support */
+.excalidraw.theme--dark .webrtc-gallery-wrapper {
+  background: #2b2b2b;
+  border-color: #444;
+}
+.excalidraw.theme--dark .gallery-header {
+  background: #3a3a3a;
+  border-color: #444;
+}
+.excalidraw.theme--dark .drag-handle {
+  color: #ddd;
+}
+.excalidraw.theme--dark .minimize-btn {
+  color: #aaa;
+}
+.excalidraw.theme--dark .minimize-btn:hover {
+  color: #fff;
+}
+.excalidraw.theme--dark .webrtc-videos {
+  background: #222;
+}
 .excalidraw.theme--dark .webrtc-controls {
-  background: #333;
+  background: #2b2b2b;
+  border-color: #444;
 }
 .excalidraw.theme--dark .webrtc-controls button {
   background: #444;
   color: #ddd;
 }
+.excalidraw.theme--dark .webrtc-controls button:hover {
+  background: #555;
+}
 .excalidraw.theme--dark .webrtc-controls button.active {
   background: #ff5252;
+}
+.excalidraw.theme--dark .webrtc-controls button.active:hover {
+  background: #ff1744;
 }
