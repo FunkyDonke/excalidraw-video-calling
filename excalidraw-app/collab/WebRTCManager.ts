@@ -81,32 +81,8 @@ class WebRTCManager {
   }
 
   public async toggleVideoAudio(video: boolean, audio: boolean) {
-    if (video || audio) {
-      if (!this.localStream) {
-        try {
-          this.localStream = await navigator.mediaDevices.getUserMedia({ video, audio });
-        } catch (e) {
-          console.error("Failed to get media devices", e);
-          return;
-        }
-      } else {
-        const videoTrack = this.localStream.getVideoTracks()[0];
-        if (videoTrack) videoTrack.enabled = video;
-        const audioTrack = this.localStream.getAudioTracks()[0];
-        if (audioTrack) audioTrack.enabled = audio;
-      }
-      this.isVideoEnabled = video;
-      this.isAudioEnabled = audio;
-      
-      // Send stream to existing connections
-      this.replaceStreamInConnections();
-      
-      // Fire local stream added event
-      this.updateStreams(prev => {
-        const filtered = prev.filter(s => s.peerId !== 'local');
-        return [...filtered, { peerId: 'local', stream: this.localStream! }];
-      });
-    } else {
+    // If no media is requested, stop everything
+    if (!video && !audio) {
       if (this.localStream) {
         this.localStream.getTracks().forEach(track => track.stop());
         this.localStream = null;
@@ -114,7 +90,37 @@ class WebRTCManager {
       this.isVideoEnabled = false;
       this.isAudioEnabled = false;
       this.updateStreams(prev => prev.filter(s => s.peerId !== 'local'));
+      this.replaceStreamInConnections();
+      return;
     }
+
+    // Stop existing tracks to fully re-negotiate and turn off hardware lights
+    if (this.localStream) {
+      this.localStream.getTracks().forEach(track => track.stop());
+      this.localStream = null;
+    }
+
+    try {
+      this.localStream = await navigator.mediaDevices.getUserMedia({ 
+        video, 
+        audio: audio ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true } : false 
+      });
+    } catch (e) {
+      console.error("Failed to get media devices", e);
+      return;
+    }
+
+    this.isVideoEnabled = video;
+    this.isAudioEnabled = audio;
+    
+    // Fire local stream added event
+    this.updateStreams(prev => {
+      const filtered = prev.filter(s => s.peerId !== 'local');
+      return [...filtered, { peerId: 'local', stream: this.localStream! }];
+    });
+
+    // Send stream to existing connections
+    this.replaceStreamInConnections();
   }
 
   public async toggleScreenShare(enable: boolean) {

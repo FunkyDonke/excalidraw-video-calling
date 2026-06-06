@@ -17,12 +17,14 @@ const VideoPlayer = ({ stream, isLocal }: { stream: MediaStream; isLocal?: boole
       videoRef.current.srcObject = stream;
       if (isLocal) {
         videoRef.current.muted = true;
+        videoRef.current.volume = 0;
       }
     }
     if (audioRef.current && stream && !hasVideo && hasAudio) {
       audioRef.current.srcObject = stream;
       if (isLocal) {
         audioRef.current.muted = true;
+        audioRef.current.volume = 0;
       }
     }
   }, [stream, isLocal, hasVideo, hasAudio]);
